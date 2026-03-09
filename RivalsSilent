@@ -10,7 +10,32 @@ local autoEnabled = true
 local isLeftMouseDown = false
 local autoClickConnection
 
-local AIM_FOV = 400 -- shooting radius (increase if you want it to lock further away)
+-- HIGHLIGHT ESP
+local function addHighlight(character)
+	if character:FindFirstChild("PlayerHighlight") then return end
+	
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "PlayerHighlight"
+	highlight.FillColor = Color3.fromRGB(0,255,0)
+	highlight.FillTransparency = 0.4
+	highlight.OutlineColor = Color3.fromRGB(255,255,255)
+	highlight.OutlineTransparency = 0
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = character
+end
+
+for _,player in ipairs(Players:GetPlayers()) do
+	if player ~= localPlayer then
+		if player.Character then
+			addHighlight(player.Character)
+		end
+		player.CharacterAdded:Connect(addHighlight)
+	end
+end
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(addHighlight)
+end)
 
 -- UI
 local gui = Instance.new("ScreenGui")
@@ -18,13 +43,13 @@ gui.ResetOnSpawn = false
 gui.Parent = localPlayer:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,170,0,80)
+frame.Size = UDim2.new(0,150,0,60)
 frame.Position = UDim2.new(0,20,0,200)
 frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 frame.Parent = gui
 
 local toggle = Instance.new("TextButton")
-toggle.Size = UDim2.new(1,-10,0.5,-5)
+toggle.Size = UDim2.new(1,-10,1,-10)
 toggle.Position = UDim2.new(0,5,0,5)
 toggle.Text = "Auto Shoot: ON"
 toggle.TextColor3 = Color3.new(1,1,1)
@@ -41,32 +66,10 @@ local function isLobbyVisible()
 	return localPlayer.PlayerGui.MainGui.MainFrame.Lobby.Currency.Visible
 end
 
--- ESP for bots / players
-local function addESP(character)
-	if character:FindFirstChild("BotESP") then return end
-
-	local highlight = Instance.new("Highlight")
-	highlight.Name = "BotESP"
-	highlight.FillColor = Color3.fromRGB(0,255,0)
-	highlight.FillTransparency = 0.35
-	highlight.OutlineColor = Color3.fromRGB(255,255,255)
-	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Parent = character
-end
-
-for _,p in pairs(Players:GetPlayers()) do
-	if p ~= localPlayer then
-		if p.Character then
-			addESP(p.Character)
-		end
-		p.CharacterAdded:Connect(addESP)
-	end
-end
-
--- closest player inside FOV
+-- closest player
 local function getClosestPlayerToMouse()
 	local closest
-	local shortest = AIM_FOV
+	local shortest = math.huge
 	local mousePos = UserInputService:GetMouseLocation()
 
 	for _,player in ipairs(Players:GetPlayers()) do
@@ -89,14 +92,12 @@ local function getClosestPlayerToMouse()
 	return closest
 end
 
--- smooth aim
+-- aim
 local function lockCameraToHead()
 	if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
 		local head = targetPlayer.Character.Head
 		local camPos = camera.CFrame.Position
-		local targetCF = CFrame.new(camPos, head.Position)
-
-		camera.CFrame = camera.CFrame:Lerp(targetCF, 0.25)
+		camera.CFrame = CFrame.new(camPos, head.Position)
 	end
 end
 
@@ -129,9 +130,9 @@ UserInputService.InputEnded:Connect(function(input)
 	end
 end)
 
--- aim loop (ONLY when shooting)
+-- aim loop
 RunService.Heartbeat:Connect(function()
-	if isLeftMouseDown and autoEnabled and not isLobbyVisible() then
+	if not isLobbyVisible() then
 		targetPlayer = getClosestPlayerToMouse()
 		if targetPlayer then
 			lockCameraToHead()
